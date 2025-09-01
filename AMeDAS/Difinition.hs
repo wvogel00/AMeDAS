@@ -12,8 +12,9 @@ type Pos = (Double, Double)
 type ID = Int
 type Temperature = Double
 data Sampling = Sampling Start Stop Resolution
-data Start = Start Year Month Day Hour Minute Second
-data Stop = Stop Year Month Day Hour Minute Second
+data Date = Date Year Month Day Hour Minute Second deriving Eq
+type Start = Date
+type Stop = Date
 type Resolution = Minute -- アメダスデータ周期が10分
 type Year   = Int
 type Month  = Int
@@ -24,6 +25,10 @@ type Second = Int
 type Longtitude = Double
 type Latitude = Double
 
+instance Show Date where
+  show (Date y m d h mt s) = concat . map format $ zip [y,m,d,h,mt,s] [4,2,2,2,2,2]  where
+    format (v,n) = replicate (n-length (show v)) '0' ++ show v
+
 temp35File = "data/temp35.dat"
 temp30File = "data/temp30.dat"
 temp25File = "data/temp25.dat"
@@ -31,8 +36,7 @@ temp0File = "data/temp0.dat"
 tempAllFile = "data/tempall.dat"
 othersFile = "data/others.dat"
 
-defStart (y, m, d, h, mt, s) = Start y m d h mt s
-defStop  (y, m, d, h, mt, s) = Start y m d h mt s
+defDate (y, m, d, h, mt, s) = Date y m d h mt s
 
 -- DB生成用 ------------
 type StationTable = HM.HashMap Int Station

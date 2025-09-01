@@ -1,0 +1,64 @@
+{-# LANGUAGE OverloadedStrings #-}
+module AMeDAS.AMeDAS where
+
+import Data.Aeson
+import Network.HTTP.Simple
+import qualified Data.ByteString.Lazy as BL
+import qualified Data.HashMap.Strict as HM
+import qualified Data.Text as T
+import           Data.Text (Text)
+import qualified Data.Text.IO as TIO
+import Data.List (find)
+import Data.List.Split (splitWhen)
+import Data.Maybe
+import Data.Time
+import Data.Time.Format (formatTime, defaultTimeLocale)
+import AMeDAS.Difinition
+import AMeDAS.StationTable
+import Debug.Trace (trace)
+
+
+getLatestFileName = do
+  localNow <- utcToLocalTime <$> getCurrentTimeZone <*> getCurrentTime
+  let mm = latestMin $ formatTime defaultTimeLocale "%M" localNow
+  putStrLn $ formatTime defaultTimeLocale "%Y/%m/%d %H:" localNow ++ mm ++ ":00"
+  return $ url ++ formatTime defaultTimeLocale "%Y%m%d%H" localNow ++ mm ++ "00.json"
+  where
+    latestMin m = let v = take 2 . show $ (read m`div`10) * 10 in if length v==1 then '0':v else v
+
+url = "https://www.jma.go.jp/bosai/amedas/data/map/"
+
+getTempText :: Weather -> Text
+getTempText w  = T.concat [T.pack . show $ value . fromJust $ temp w, " [℃]"]
+
+getPos :: ID -> StationTable -> (Longtitude, Latitude)
+getPos key tb = let v = fromJust $ HM.lookup key tb in (dmsToDeg $ lon v, dmsToDeg $ lat v)
+
+getName :: ID -> StationTable -> Text
+getName key tb = let v = fromJust $ HM.lookup key tb in kjName v
+
+getCurrentAMeDASData :: IO WeatherMap
+getCurrentAMeDASData = getLatestFileName >>= getAMeDASData 
+
+getJSONpath :: Date -> FilePath
+getJSONpath dt = url ++ show dt ++ ".json"
+
+getAMeDASData :: FilePath -> IO WeatherMap
+getAMeDASData filename = do
+    res <- httpLBS (parseRequest_ filename)
+    stationDB <- getStationMap
+    let jsonFile = getResponseBody res
+    let tb = eitherDecode jsonFile :: Either String WeatherMap
+    case tb of
+      Left err -> putStrLn "parse error" >> return HM.empty
+      Right xs -> return xs
+
+makeTempList :: StationTable -> WeatherMap -> [(Temperature, Pos)]
+makeTempList tb wm = let ws = HM.toList wm in map g . filter available $ map f ws where
+  f = \(key, w) -> (key, temp w)
+  available (_,tmp) = case tmp of
+    Nothing -> False
+    Just v -> not $ isNaN (value v)
+  g (key, Just v) = (value v, getPos key tb)
+
+
