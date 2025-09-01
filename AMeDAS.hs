@@ -19,18 +19,12 @@ import Debug.Trace (trace)
 
 
 getLatestFileName = do
-  now <- getCurrentTime
-  tz <- getCurrentTimeZone
-  let localNow = utcToLocalTime tz now
+  localNow <- utcToLocalTime <$> getCurrentTimeZone <*> getCurrentTime
   let mm = latestMin $ formatTime defaultTimeLocale "%M" localNow
-  let timestamp = formatTime defaultTimeLocale "%Y%m%d%H" localNow ++ mm ++ "00.json"
-  let timeStr   = formatTime defaultTimeLocale "%Y/%m/%d %H:" localNow ++ mm ++ ":00"
-  let s  = "00"   
-  putStrLn timeStr
-  return timestamp
+  putStrLn $ formatTime defaultTimeLocale "%Y/%m/%d %H:" localNow ++ mm ++ ":00"
+  return $ formatTime defaultTimeLocale "%Y%m%d%H" localNow ++ mm ++ "00.json"
   where
-    latestMin :: String -> String
-    latestMin m = let v = take 2 . show $ (div (read m) 10) * 10 - 10 in if length v==1 then '0':v else v
+    latestMin m = let v = take 2 . show $ (read m`div`10) * 10 in if length v==1 then '0':v else v
 
 url = "https://www.jma.go.jp/bosai/amedas/data/map/"
 
