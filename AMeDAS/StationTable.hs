@@ -1,16 +1,9 @@
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE DeriveGeneric #-}
-
 module AMeDAS.StationTable (getStationMap) where
 
 import Network.HTTP.Conduit (simpleHttp)
 import qualified Data.HashMap.Strict as HM
-import qualified Data.Text as T
-import           Data.Text (Text)
-import           Data.Maybe (fromJust, mapMaybe)
-import           Data.Aeson (eitherDecode, FromJSON(..), (.:?), (.:), withObject)
+import Data.Aeson 
 import AMeDAS.Difinition
-
 
 parseAmeMaster jsonStr = do
   let result = eitherDecode jsonStr :: Either String StationTable
